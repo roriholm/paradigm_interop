@@ -1,0 +1,62 @@
+{
+  "type": "record",
+  "name": "Vehicle",
+  "fields": [
+    { "name": "make", "type": "string" },
+    { "name": "model", "type": "string" },
+    { "name": "year", "type": "int" },
+    {
+      "name": "engine",
+      "type": {
+        "type": "record",
+        "name": "Engine",
+        "fields": [
+          { "name": "type", "type": "string" },
+          { "name": "displacement", "type": "double" },
+          { "name": "horsepower", "type": "int" }
+        ]
+      }
+    },
+    {
+      "name": "tires",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "Tire",
+          "fields": [
+            { "name": "pressure", "type": "double" },
+            { "name": "position", "type": "string" },
+            { "name": "tread_depth", "type": "double" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "passengers",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "Passenger",
+          "fields": [
+            { "name": "name", "type": "string" },
+            { "name": "seat_number", "type": "int" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "current_location",
+      "type": {
+        "type": "record",
+        "name": "Location",
+        "fields": [
+          { "name": "latitude", "type": "double" },
+          { "name": "longitude", "type": "double" },
+          { "name": "altitude", "type": "double" }
+        ]
+      }
+    }
+  ]
+}

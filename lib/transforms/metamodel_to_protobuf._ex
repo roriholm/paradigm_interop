@@ -1,0 +1,103 @@
+defmodule Paradigm.Transform.Canonical.MetamodelToProtobuf do
+  @behaviour Paradigm.Transform
+
+  def transform(graph) do
+    try do
+      # Convert classes to messages
+      messages = graph
+      |> find_nodes_by_class("class")
+      |> Enum.map(fn {id, node} -> create_message(id, node, graph) end)
+      |> Map.new()
+
+      # Convert enumerations to protobuf enums
+      enums = graph
+      |> find_nodes_by_class("enumeration")
+      |> Enum.map(fn {id, node} -> create_enum(id, node, graph) end)
+      |> Map.new()
+
+      # Combine into final graph
+      {:ok, Map.merge(messages, enums)}
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
+  end
+
+  defp create_message(id, _node, graph) do
+    # Create fields from class attributes
+    fields = get_node_data(graph, id, "owned_attributes", [])
+    |> Enum.with_index(1)
+    |> Enum.map(fn {attr_id, index} ->
+      create_field(attr_id, index, graph)
+    end)
+
+    # Create the message node
+    message = %Paradigm.Graph.Node{
+      class: "message",
+      data: %{
+        "name" => get_node_data(graph, id, "name"),
+        "fields" => fields,
+        "nested_messages" => []
+      }
+    }
+
+    {id, message}
+  end
+
+  defp create_field(property_id, field_number, graph) do
+    #_property = graph[property_id]
+    type = get_node_data(graph, property_id, "type")
+
+    # Determine field label based on bounds
+    label = cond do
+      get_node_data(graph, property_id, "upper_bound") == :infinity -> "repeated"
+      get_node_data(graph, property_id, "lower_bound") == 0 -> "optional"
+      true -> "required"
+    end
+
+    # Convert type name to protobuf type
+    pb_type = case type do
+      "string" -> "string"
+      "integer" -> "int32"
+      "boolean" -> "bool"
+      "float" -> "float"
+      _ -> "message" # Default to message type for complex types
+    end
+
+    %Paradigm.Graph.Node{
+      class: "field",
+      data: %{
+        "name" => get_node_data(graph, property_id, "name"),
+        "type" => pb_type,
+        "number" => field_number,
+        "label" => label
+      }
+    }
+  end
+
+  defp create_enum(id, _node, graph) do
+    # Create enum values from literals
+    values = get_node_data(graph, id, "literals", [])
+    |> Enum.with_index()
+    |> Enum.map(fn {literal_id, index} ->
+      %Paradigm.Graph.Node{
+        class: "enum_value",
+        data: %{
+          "name" => get_node_data(graph, literal_id, "name"),
+          "number" => index
+        }
+      }
+    end)
+
+    # Create the enum node
+    enum = %Paradigm.Graph.Node{
+      class: "enum",
+      data: %{
+        "name" => get_node_data(graph, id, "name"),
+        "values" => values,
+        "parent_message" => nil
+      }
+    }
+
+    {id, enum}
+  end
+end

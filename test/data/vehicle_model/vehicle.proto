@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+message Vehicle {
+  string make = 1;
+  string model = 2;
+  int32 year = 3;
+
+  Engine engine = 4;
+  repeated Tire tires = 5;
+  repeated Passenger passengers = 6;
+  Location current_location = 7;
+}
+
+message Engine {
+  string type = 1;  // gas, diesel, electric
+  float displacement = 2;  // in liters
+  int32 horsepower = 3;
+}
+
+message Tire {
+  float pressure = 1;  // PSI
+  string position = 2;  // front_left, front_right, etc.
+  float tread_depth = 3;  // in mm
+}
+
+message Passenger {
+  string name = 1;
+  int32 seat_number = 2;
+}
+
+message Location {
+  double latitude = 1;
+  double longitude = 2;
+  float altitude = 3;
+}

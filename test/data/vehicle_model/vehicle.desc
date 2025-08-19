@@ -1,0 +1,33 @@
+
+û
+ data/vehicle_model/vehicle.proto"ç
+Vehicle
+make (	Rmake
+model (	Rmodel
+year (Ryear
+engine (2.EngineRengine
+tires (2.TireRtires*
+
+passengers (2
+.PassengerR
+passengers4
+current_location (2	.LocationRcurrentLocation"`
+Engine
+type (	Rtype"
+displacement (Rdisplacement
+
+horsepower (R
+horsepower"_
+Tire
+pressure (Rpressure
+position (	Rposition
+tread_depth (R
+treadDepth"@
+	Passenger
+name (	Rname
+seat_number (R
+seatNumber"`
+Location
+latitude (Rlatitude
+	longitude (R	longitude
+altitude (Raltitudebproto3

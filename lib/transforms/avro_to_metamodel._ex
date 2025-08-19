@@ -1,0 +1,116 @@
+defmodule Paradigm.Transform.Canonical.AvroToMetamodel do
+  alias Paradigm.Graph.Instance
+  alias Paradigm.Graph.Node
+    @behaviour Paradigm.Transform
+  @type_mapping %{
+    "null" => "null",
+    "boolean" => "boolean",
+    "int" => "integer",
+    "long" => "integer",
+    "float" => "float",
+    "double" => "double",
+    "bytes" => "string",
+    "string" => "string"
+  }
+
+  @impl true
+  def transform(instance) do
+    primitives = Paradigm.Canonical.primitive_nodes()
+  # First pass to process records/enums as classes
+    metamodel_graph = instance
+    |> Instance.find_nodes_by_class(["record", "enum"])
+    |> Enum.reduce(primitives, &convert_type_node(&1, &2, source_graph))
+
+    {:ok, metamodel_graph}
+  end
+
+
+  defp convert_type_node({id, node}, acc, source_graph) do
+    class_id = to_string(id)
+    class_name = Paradigm.Graph.get_node_data(source_graph, id, "name")
+
+    case node.class do
+      "record" ->
+        {acc_with_props, properties} = source_graph
+        |> Paradigm.Graph.get_node_data(id, "fields", [])
+        |> Enum.reduce({acc, []}, &convert_field(&1, &2, source_graph))
+
+        Map.put(acc_with_props, class_id, %Node{
+          class: "class",
+          data: %{
+            "name" => class_name,
+            "is_abstract" => false,
+            "owned_attributes" => properties,
+            "super_classes" => []
+          }
+        })
+
+      "enum" ->
+        symbols = Paradigm.Graph.get_node_data(source_graph, id, "symbols", [])
+
+        Map.put(acc, class_id, %Node{
+          class: "enumeration",
+          data: %{
+            "name" => class_name,
+            "literals" => symbols
+          }
+        })
+    end
+  end
+
+  defp convert_field(field_id, {acc, properties}, source_graph) do
+    property_id = to_string(field_id)
+    field_data = %{
+      name: Paradigm.Graph.get_node_data(source_graph, field_id, "name"),
+      type: Paradigm.Graph.get_node_data(source_graph, field_id, "type"),
+      doc: Paradigm.Graph.get_node_data(source_graph, field_id, "doc"),
+      default: Paradigm.Graph.get_node_data(source_graph, field_id, "default"),
+      is_array: is_array_type?(source_graph, field_id)
+    }
+
+    acc = Map.put(acc, property_id, create_property_node(field_data, source_graph))
+    {acc, properties ++ [property_id]}
+  end
+
+  defp create_property_node(%{name: name, type: type, doc: doc, default: default, is_array: true}, source_graph) do
+    array_items = Paradigm.Graph.get_node_data(source_graph, type, "items")
+    %Node{
+      class: "property",
+      data: %{
+        "name" => name,
+        "type" => convert_type(array_items),
+        "is_ordered" => true,
+        "is_composite" => false,
+        "lower_bound" => 0,
+        "upper_bound" => :infinity,
+        "default_value" => default
+      }
+    }
+  end
+
+  defp create_property_node(%{name: name, type: type, doc: doc, default: default}, _source_graph) do
+    %Node{
+      class: "property",
+      data: %{
+        "name" => name,
+        "type" => convert_type(type),
+        "is_ordered" => false,
+        "is_composite" => false,
+        "lower_bound" => 1,
+        "upper_bound" => 1,
+        "default_value" => default
+      }
+    }
+  end
+
+  defp is_array_type?(source_graph, field_id) do
+    type = Paradigm.Graph.get_node_data(source_graph, field_id, "type")
+    node = Paradigm.Graph.get_node(source_graph, type)
+    node && node.class == "array"
+  end
+
+  defp convert_type(type) do
+    Map.get(@type_mapping, type, type)
+  end
+
+end

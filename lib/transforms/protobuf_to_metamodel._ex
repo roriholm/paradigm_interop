@@ -1,0 +1,113 @@
+defmodule Paradigm.Transform.Canonical.ProtobufToMetamodel do
+  @behaviour Paradigm.Transform
+
+  def transform(source) do
+    try do
+      # Create package first
+      package_id = "package_1"
+      package = %Paradigm.Graph.Node{
+        class: "package",
+        data: %{
+          "name" => "protobuf",
+          "uri" => "http://example.org/protobuf",
+          "nested_packages" => [],
+          "owned_types" => []
+        }
+      }
+
+      # Transform all messages to classes
+      {class_nodes, property_nodes} = source
+      |> find_nodes_by_class("message")
+      |> Enum.reduce({%{}, %{}}, fn {id, _message}, {classes, properties} ->
+        class_id = "class_#{id}"
+        class = %Paradigm.Graph.Node{
+          class: "class",
+          data: %{
+            "name" => get_node_data(source, id, "message_name"),
+            "is_abstract" => false,
+            "owned_attributes" => [],
+            "super_classes" => []
+          }
+        }
+
+        # Transform message fields to properties
+        field_ids = get_node_data(source, id, "message_fields", [])
+        field_properties = create_properties_from_fields(source, field_ids)
+
+        {
+          Map.put(classes, class_id, class),
+          Map.merge(properties, field_properties)
+        }
+      end)
+
+      # Transform all enums to enumerations
+      {enum_nodes, enum_literal_nodes} = source
+      |> find_nodes_by_class("enum")
+      |> Enum.reduce({%{}, %{}}, fn {id, _enum}, {enums, literals} ->
+        enum_id = "enum_#{id}"
+        enumeration = %Paradigm.Graph.Node{
+          class: "enumeration",
+          data: %{
+            "name" => get_node_data(source, id, "enum_name"),
+            "literals" => []
+          }
+        }
+
+        # Transform enum values to enumeration literals
+        value_ids = get_node_data(source, id, "enum_values", [])
+        value_literals = create_literals_from_values(source, value_ids)
+
+        {
+          Map.put(enums, enum_id, enumeration),
+          Map.merge(literals, value_literals)
+        }
+      end)
+
+      # Combine all nodes into final graph
+      result = %{}
+      |> Map.put(package_id, package)
+      |> Map.merge(class_nodes)
+      |> Map.merge(property_nodes)
+      |> Map.merge(enum_nodes)
+      |> Map.merge(enum_literal_nodes)
+
+      {:ok, result}
+    rescue
+      e -> {:error, "Transform failed: #{inspect(e)}"}
+    end
+  end
+
+  defp create_properties_from_fields(source, field_ids) do
+    field_ids
+    |> Enum.reduce(%{}, fn field_id, props ->
+      prop_id = "property_#{field_id}"
+      property = %Paradigm.Graph.Node{
+        class: "property",
+        data: %{
+          "name" => get_node_data(source, field_id, "field_name"),
+          "type" => get_node_data(source, field_id, "field_type"),
+          "is_ordered" => false,
+          "is_composite" => false,
+          "lower_bound" => 0,
+          "upper_bound" => 1,
+          "default_value" => nil
+        }
+      }
+      Map.put(props, prop_id, property)
+    end)
+  end
+
+  defp create_literals_from_values(source, value_ids) do
+    value_ids
+    |> Enum.reduce(%{}, fn value_id, lits ->
+      lit_id = "literal_#{value_id}"
+      literal = %Paradigm.Graph.Node{
+        class: "enumeration_literal",
+        data: %{
+          "name" => get_node_data(source, value_id, "enum_value_name")
+        }
+      }
+      Map.put(lits, lit_id, literal)
+    end)
+  end
+end

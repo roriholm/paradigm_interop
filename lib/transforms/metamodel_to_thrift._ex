@@ -1,0 +1,114 @@
+defmodule Paradigm.Transform.Canonical.MetamodelToThrift do
+  @behaviour Paradigm.Transform
+
+  # @type_mapping %{
+  #   "boolean" => "bool",
+  #   "integer" => "byte",
+  #   "integer" => "i32",
+  #   "float" => "double",
+  #   "string" => "string",
+  # }
+
+  @impl true
+  def transform(graph) do
+    graph
+    |> create_thrift_graph()
+    |> Paradigm.Canonical.Thrift.inject_primitive_nodes()
+    |> (fn graph -> {:ok, graph} end).()
+  end
+  defp create_thrift_graph(graph) do
+    classes = Paradigm.Graph.find_nodes_by_class(graph, "class")
+
+    Enum.reduce(classes, %{}, fn {id, _class}, acc ->
+      struct_id = to_string(id)
+      struct_name = Paradigm.Graph.get_node_data(graph, id, "name")
+      is_abstract = Paradigm.Graph.get_node_data(graph, id, "is_abstract")
+
+      {fields, acc_with_fields} = if is_abstract do
+        process_abstract_fields(id, graph, acc)
+      else
+        process_concrete_fields(id, graph, acc)
+      end
+
+      Map.put(acc_with_fields, struct_id, %Paradigm.Graph.Node{
+        class: if(is_abstract, do: "union", else: "struct"),
+        data: %{
+          "name" => struct_name,
+          "fields" => fields
+        }
+      })
+    end)
+  end
+
+  defp process_abstract_fields(id, graph, acc) do
+    sub_classes = Paradigm.Graph.find_nodes_by_class(graph, "class")
+      |> Enum.filter(fn {sub_id, _} ->
+        super_classes = Paradigm.Graph.get_node_data(graph, sub_id, "super_classes")
+        to_string(id) in Enum.map(super_classes, &to_string/1)
+      end)
+
+    fields = Enum.map_reduce(sub_classes, acc, fn {sub_id, _}, acc ->
+      type_id = to_string(sub_id)
+      field_id = "#{id}_#{type_id}"
+      field_name = String.downcase(Paradigm.Graph.get_node_data(graph, sub_id, "name"))
+
+      updated_acc = Map.put(acc, field_id, %Paradigm.Graph.Node{
+        class: "field",
+        data: %{
+          "name" => field_name,
+          "type" => type_id,
+          "required" => false,
+          "default" => nil,
+          "is_list" => false
+        }
+      })
+
+      {field_id, updated_acc}
+    end)
+  end
+
+  defp process_concrete_fields(id, graph, acc) do
+    super_classes = Paradigm.Graph.get_node_data(graph, id, "super_classes")
+    all_fields = super_classes
+      |> Enum.flat_map(fn super_class ->
+        Paradigm.Graph.get_node_data(graph, super_class, "owned_attributes", [])
+      end)
+      |> Enum.concat(Paradigm.Graph.get_node_data(graph, id, "owned_attributes", []))
+
+    Enum.map_reduce(all_fields, acc, &process_field(&1, &2, graph))
+  end
+
+  defp process_field(property_id, acc, graph) do
+    field_id = to_string(property_id)
+    field_name = Paradigm.Graph.get_node_data(graph, property_id, "name")
+    field_type = Paradigm.Graph.get_node_data(graph, property_id, "type")
+    field_default = Paradigm.Graph.get_node_data(graph, property_id, "default_value")
+    field_required = Paradigm.Graph.get_node_data(graph, property_id, "lower_bound") > 0
+    field_is_list = Paradigm.Graph.get_node_data(graph, property_id, "upper_bound") > 1
+
+    updated_acc = Map.put(acc, field_id, %Paradigm.Graph.Node{
+      class: "field",
+      data: %{
+        "name" => field_name,
+        "type" => convert_type(field_type),
+        "required" => field_required,
+        "default" => field_default,
+        "is_list" => field_is_list
+      }
+    })
+
+    {field_id, updated_acc}
+  end
+
+  defp convert_type(type) do
+    case type do
+      "boolean" -> "bool"
+      "float" -> "double"
+      "integer" -> "i32"
+      "string" -> "string"
+      "void" -> nil
+      other -> other
+    end
+  end
+
+end
