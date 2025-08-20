@@ -1,7 +1,7 @@
 defmodule ParadigmInterop.Thrift do
   def create_thrift_graph(contents) do
     {:ok, %Thrift.AST.Schema{structs: structs} = schema} = Thrift.Parser.parse_string(contents)
-    IO.inspect(schema)
+    # IO.inspect(schema)
     false
   end
 

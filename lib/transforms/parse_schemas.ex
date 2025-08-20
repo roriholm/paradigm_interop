@@ -28,17 +28,10 @@ defmodule ParadigmInterop.Transforms.ParseSchemas do
 
     new_graph =
       case extension do
-        ".thrift" ->
-          ParadigmInterop.Thrift.create_thrift_graph(contents)
-
-        ".proto" ->
-          ParadigmInterop.Protobuf.create_protobuf_graph(file_node_id, contents)
-
-        ".avsc" ->
-          ParadigmInterop.Avro.create_avro_graph(contents)
-
-        _ ->
-          false
+        ".thrift" -> ParadigmInterop.Thrift.create_thrift_graph(contents)
+        ".proto" -> ParadigmInterop.Protobuf.create_protobuf_graph(contents)
+        ".avsc" -> ParadigmInterop.Avro.create_avro_graph(contents)
+        _ -> false
       end
 
     if new_graph do

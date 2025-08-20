@@ -3,7 +3,7 @@ defmodule ParadigmInterop.Avro do
     {:ok, %AvroEx.Schema{context: %{names: records}, schema: %{fields: fields}} = avro_schema} =
       AvroEx.decode_schema(contents)
 
-    IO.inspect(records)
+    # IO.inspect(records)
     false
   end
 

@@ -9,6 +9,8 @@ defmodule ParadigmInterop.Paradigms.Protobuf do
       primitive_types: %{
         "boolean" => %PrimitiveType{name: "Boolean"},
         "integer" => %PrimitiveType{name: "Integer"},
+        "double" => %PrimitiveType{name: "Double"},
+        "float" => %PrimitiveType{name: "Float"},
         "string" => %PrimitiveType{name: "String"}
       },
       packages: %{
@@ -20,23 +22,35 @@ defmodule ParadigmInterop.Paradigms.Protobuf do
         }
       },
       classes: %{
+        "type" => %Class{
+          name: "Type",
+          is_abstract: true,
+          owned_attributes: ["type_name"],
+          super_classes: []
+        },
+        "primitive" => %Class{
+          name: "Primitive",
+          is_abstract: false,
+          owned_attributes: [],
+          super_classes: ["type"]
+        },
         "message" => %Class{
           name: "Message",
           is_abstract: false,
-          owned_attributes: ["message_name", "message_fields", "nested_messages"],
-          super_classes: []
+          owned_attributes: ["message_fields", "nested_messages"],
+          super_classes: ["type"]
         },
         "field" => %Class{
           name: "Field",
           is_abstract: false,
-          owned_attributes: ["field_name", "field_type", "field_number", "field_label"],
+          owned_attributes: ["field_name", "field_type", "field_tag", "field_label"],
           super_classes: []
         },
         "enum" => %Class{
           name: "Enum",
           is_abstract: false,
-          owned_attributes: ["enum_name", "enum_values", "parent_message"],
-          super_classes: []
+          owned_attributes: ["enum_values", "parent_message"],
+          super_classes: ["type"]
         },
         "enum_value" => %Class{
           name: "EnumValue",
@@ -46,7 +60,7 @@ defmodule ParadigmInterop.Paradigms.Protobuf do
         }
       },
       properties: %{
-        "message_name" => %Property{
+        "type_name" => %Property{
           name: "name",
           type: "string",
           is_ordered: false,
@@ -80,14 +94,14 @@ defmodule ParadigmInterop.Paradigms.Protobuf do
         },
         "field_type" => %Property{
           name: "type",
-          type: "string",
+          type: "type",
           is_ordered: false,
           is_composite: false,
           lower_bound: 1,
           upper_bound: 1
         },
-        "field_number" => %Property{
-          name: "number",
+        "field_tag" => %Property{
+          name: "tag",
           type: "integer",
           is_ordered: false,
           is_composite: false,
@@ -100,14 +114,6 @@ defmodule ParadigmInterop.Paradigms.Protobuf do
           is_ordered: false,
           is_composite: false,
           lower_bound: 0,
-          upper_bound: 1
-        },
-        "enum_name" => %Property{
-          name: "name",
-          type: "string",
-          is_ordered: false,
-          is_composite: false,
-          lower_bound: 1,
           upper_bound: 1
         },
         "enum_values" => %Property{
