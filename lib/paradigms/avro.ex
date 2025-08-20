@@ -1,4 +1,4 @@
-defmodule ParadigmInterop.Paradgms.Avro do
+defmodule ParadigmInterop.Paradigms.Avro do
   @moduledoc false
   alias Paradigm.{Package, Class, Property, PrimitiveType}
 
@@ -267,16 +267,5 @@ defmodule ParadigmInterop.Paradgms.Avro do
       },
       enumerations: %{}
     }
-  end
-
-  def inject_primitive_nodes(graph) do
-    primitive_types = ~w(null boolean int long float double bytes string)
-
-    Enum.reduce(primitive_types, graph, fn type, acc ->
-      Map.put_new(acc, type, %Paradigm.Graph.Node{
-        class: "primitive",
-        data: %{"name" => type}
-      })
-    end)
   end
 end

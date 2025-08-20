@@ -3,10 +3,57 @@ defmodule ParadigmInterop.Avro do
     {:ok, %AvroEx.Schema{context: %{names: records}, schema: %{fields: fields}} = avro_schema} =
       AvroEx.decode_schema(contents)
 
-    # IO.inspect(records)
-    false
+    IO.inspect(avro_schema)
+
+    baseline_graph =
+      Paradigm.Graph.MapGraph.new()
+      |> ParadigmInterop.populate_primitives(~w(null boolean int long float double bytes string))
+
+    records
+    |> Enum.reduce(
+      baseline_graph,
+      fn {id,
+          %AvroEx.Schema.Record{
+            fields: fields,
+            name: name,
+            namespace: namespace,
+            aliases: aliases,
+            doc: doc
+          }},
+         acc ->
+        acc
+        |> Paradigm.Graph.insert_node(id, "record", %{
+          name: name,
+          aliases: aliases,
+          doc: doc,
+          namespace: namespace
+        })
+        |> insert_fields(id, fields)
+      end
+    )
   end
 
+  defp insert_fields(graph, message_name, fields) do
+    Enum.reduce(fields, graph, fn field, acc ->
+      IO.inspect(field)
+      field_id = "#{message_name}_#{field.name}"
+
+      Paradigm.Graph.insert_node(acc, field_id, "field", %{
+        name: to_string(field.name),
+        type: %Paradigm.Graph.Node.Ref{id: pointer_to(field.type)},
+        default: field.default,
+        aliases: field.aliases
+      })
+    end)
+  end
+
+  defp pointer_to(%AvroEx.Schema.Primitive{type: name}), do: to_string(name)
+
+  defp pointer_to(%AvroEx.Schema.Record{name: name}), do: name
+
+  defp pointer_to(%AvroEx.Schema.Array{items: type}), do: "#{pointer_to(type)}_array"
+
+  ############# old work below
   defp convert_to_graph(avro) do
     graph =
       %{}

@@ -11,6 +11,15 @@ defmodule ParadigmInteropTest do
              %Paradigm.Conformance.Result{issues: []}
   end
 
+  test "avro parsing and conformance" do
+    {:ok, contents} = File.read("./test/data/vehicle_model/vehicle.avsc")
+    avro_graph = ParadigmInterop.Avro.create_avro_graph(contents)
+    avro_paradigm = ParadigmInterop.Paradigms.Avro.definition()
+
+    assert Paradigm.Conformance.check_graph(avro_paradigm, avro_graph) ==
+             %Paradigm.Conformance.Result{issues: []}
+  end
+
   test "schemas" do
     filesystem_graph = Paradigm.Graph.FilesystemGraph.new(root: "./test/data/vehicle_model")
 
@@ -21,7 +30,6 @@ defmodule ParadigmInteropTest do
         %{}
       )
 
-    IO.inspect(schema_graph)
     # schema_paradigm = ParadigmInterop.Paradigms.Schema.definition()
 
     # assert %Paradigm.Conformance.Result{issues: []} =

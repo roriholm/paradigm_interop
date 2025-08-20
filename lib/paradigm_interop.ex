@@ -3,16 +3,10 @@ defmodule ParadigmInterop do
   Documentation for `ParadigmInterop`.
   """
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> ParadigmInterop.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  def populate_primitives(graph, primitive_names) do
+    primitive_names
+    |> Enum.reduce(graph, fn prim, acc ->
+      Paradigm.Graph.insert_node(acc, prim, "primitive", %{name: prim})
+    end)
   end
 end

@@ -5,7 +5,16 @@ defmodule ParadigmInterop.Protobuf do
     {:ok, %Protox.Definition{enums_schemas: _protobuf_enums, messages_schemas: protobuf_messages}} =
       Protox.Parse.parse(desc_contents)
 
-    baseline_graph = Paradigm.Graph.MapGraph.new() |> populate_primitives()
+    baseline_graph =
+      Paradigm.Graph.MapGraph.new()
+      |> ParadigmInterop.populate_primitives([
+        "double",
+        "float",
+        "int32",
+        "int64",
+        "bool",
+        "string"
+      ])
 
     protobuf_messages
     |> Enum.reduce(
@@ -24,13 +33,6 @@ defmodule ParadigmInterop.Protobuf do
         |> insert_fields(clean_name, fields)
       end
     )
-  end
-
-  defp populate_primitives(graph) do
-    ["double", "float", "int32", "int64", "bool", "string"]
-    |> Enum.reduce(graph, fn prim, acc ->
-      Paradigm.Graph.insert_node(acc, prim, "primitive", %{name: prim})
-    end)
   end
 
   defp insert_fields(graph, message_name, fields) do
