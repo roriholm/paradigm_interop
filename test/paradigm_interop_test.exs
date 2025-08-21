@@ -29,7 +29,13 @@ defmodule ParadigmInteropTest do
              %Paradigm.Conformance.Result{issues: []}
   end
 
-  test "schemas" do
+  test "universe initialization" do
+    universe = ParadigmInterop.bootstrap()
+    assert length(Paradigm.Graph.get_all_nodes(universe)) == 8
+    assert Paradigm.Universe.all_instantiations_conformant?(universe) == true
+  end
+
+  test "universe" do
     filesystem_graph = Paradigm.Graph.FilesystemGraph.new(root: "./test/data/vehicle_model")
 
     {:ok, _schema_graph} =

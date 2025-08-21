@@ -7,10 +7,7 @@ defmodule ParadigmInterop.Paradigms.Protobuf do
       name: "Protobuf",
       description: "Protocol Buffers data model",
       primitive_types: %{
-        "boolean" => %PrimitiveType{name: "Boolean"},
         "integer" => %PrimitiveType{name: "Integer"},
-        "double" => %PrimitiveType{name: "Double"},
-        "float" => %PrimitiveType{name: "Float"},
         "string" => %PrimitiveType{name: "String"}
       },
       packages: %{
