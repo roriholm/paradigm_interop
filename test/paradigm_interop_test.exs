@@ -20,10 +20,19 @@ defmodule ParadigmInteropTest do
              %Paradigm.Conformance.Result{issues: []}
   end
 
+  test "thrift parsing and conformance" do
+    {:ok, contents} = File.read("./test/data/vehicle_model/vehicle.thrift")
+    thrift_graph = ParadigmInterop.Thrift.create_thrift_graph(contents)
+    thrift_paradigm = ParadigmInterop.Paradigms.Thrift.definition()
+
+    assert Paradigm.Conformance.check_graph(thrift_paradigm, thrift_graph) ==
+             %Paradigm.Conformance.Result{issues: []}
+  end
+
   test "schemas" do
     filesystem_graph = Paradigm.Graph.FilesystemGraph.new(root: "./test/data/vehicle_model")
 
-    {:ok, schema_graph} =
+    {:ok, _schema_graph} =
       ParadigmInterop.Transforms.ParseSchemas.transform(
         filesystem_graph,
         Paradigm.Graph.MapGraph.new(),

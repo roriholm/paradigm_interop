@@ -37,7 +37,7 @@ defmodule ParadigmInterop.Avro do
 
       Paradigm.Graph.insert_node(acc, field_id, "field", %{
         name: to_string(field.name),
-        type: %Paradigm.Graph.Node.Ref{id: pointer_to(field.type)},
+        type: %Paradigm.Graph.Node.Ref{id: create_type_reference_id(field.type)},
         default: field.default,
         aliases: field.aliases
       })
@@ -46,19 +46,20 @@ defmodule ParadigmInterop.Avro do
   end
 
   defp maybe_create_array_node(graph, %AvroEx.Schema.Array{items: type} = array) do
-    array_id = pointer_to(array)
+    array_id = create_type_reference_id(array)
 
     Paradigm.Graph.insert_node(graph, array_id, "array", %{
       name: array_id,
-      items: %Paradigm.Graph.Node.Ref{id: pointer_to(type)}
+      items: %Paradigm.Graph.Node.Ref{id: create_type_reference_id(type)}
     })
   end
 
   defp maybe_create_array_node(graph, _), do: graph
 
-  defp pointer_to(%AvroEx.Schema.Primitive{type: name}), do: to_string(name)
+  defp create_type_reference_id(%AvroEx.Schema.Primitive{type: name}), do: to_string(name)
 
-  defp pointer_to(%AvroEx.Schema.Record{name: name}), do: name
+  defp create_type_reference_id(%AvroEx.Schema.Record{name: name}), do: name
 
-  defp pointer_to(%AvroEx.Schema.Array{items: type}), do: "#{pointer_to(type)}_array"
+  defp create_type_reference_id(%AvroEx.Schema.Array{items: type}),
+    do: "#{create_type_reference_id(type)}_array"
 end

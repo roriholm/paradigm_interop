@@ -1,57 +1,56 @@
 defmodule ParadigmInterop.Thrift do
   def create_thrift_graph(contents) do
     {:ok, %Thrift.AST.Schema{structs: structs} = schema} = Thrift.Parser.parse_string(contents)
-    # IO.inspect(schema)
-    false
-  end
 
-  defp create_thrift_schema_graph(thrift_ast) do
-    graph = Paradigm.Graph.MapGraph.new()
+    graph =
+      Paradigm.Graph.MapGraph.new()
+      |> ParadigmInterop.populate_primitives(~w(bool byte i16 i32 i64 double string))
 
-    thrift_ast.structs
-    |> Enum.reduce(graph, fn {struct_name, struct}, acc_graph ->
-      # Create field nodes for this struct
-      field_nodes =
-        struct.fields
-        |> Enum.map(fn field ->
-          field_id = "#{struct_name}_#{field.name}"
-
-          field_attrs = %{
-            "name" => Atom.to_string(field.name),
-            "type" => field.type |> type_to_string(),
-            "required" => field.required == :required,
-            "default" => field.default,
-            "is_list" => type_is_list(field.type)
-          }
-
-          {field_id, "field", field_attrs}
-        end)
-
-      # Create struct node
-      field_ids = Enum.map(field_nodes, fn {field_id, _, _} -> field_id end)
-
-      struct_attrs = %{
-        "name" => "#{struct_name}",
-        "fields" => field_ids
-      }
-
-      # Insert struct node first
-      graph_with_struct = Graph.insert_node(acc_graph, struct_name, "struct", struct_attrs)
-
-      # Insert field nodes one by one
-      field_nodes
-      |> Enum.reduce(graph_with_struct, fn {field_id, field_class, field_attrs}, graph_acc ->
-        Graph.insert_node(graph_acc, field_id, field_class, field_attrs)
-      end)
+    structs
+    |> Enum.reduce(graph, fn {struct_id, %Thrift.AST.Struct{name: name, fields: fields} = struct},
+                             acc_graph ->
+      acc_graph
+      |> Paradigm.Graph.insert_node("#{struct_id}", "struct", %{
+        "name" => "#{name}",
+        "fields" =>
+          fields
+          |> Enum.map(fn field ->
+            %Paradigm.Graph.Node.Ref{id: create_field_id(struct, field)}
+          end)
+      })
+      |> create_field_nodes(struct, fields)
     end)
   end
 
-  defp type_to_string(type) do
+  defp create_field_nodes(graph, struct, fields) do
+    fields
+    |> Enum.reduce(graph, fn %Thrift.AST.Field{
+                               id: _id,
+                               name: name,
+                               type: type,
+                               required: required,
+                               default: default
+                             } = field,
+                             acc_graph ->
+      acc_graph
+      |> Paradigm.Graph.insert_node(create_field_id(struct, field), "field", %{
+        "name" => Atom.to_string(name),
+        "type" => %Paradigm.Graph.Node.Ref{id: create_type_reference_id(type)},
+        "required" => required == :required,
+        "default" => default,
+        "is_list" => type_is_list(field.type)
+      })
+    end)
+  end
+
+  defp create_field_id(struct, field), do: "#{struct.name}_#{field.name}"
+
+  defp create_type_reference_id(type) do
     case type do
-      {:list, inner_type} -> type_to_string(inner_type)
+      {:list, inner_type} -> create_type_reference_id(inner_type)
       %Thrift.AST.TypeRef{referenced_type: type} -> Atom.to_string(type)
       type when is_atom(type) -> Atom.to_string(type)
-      _ -> "unknown"
+      _ -> throw("unknown type #{type}")
     end
   end
 
